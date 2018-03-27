@@ -21,7 +21,7 @@ func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db
 		errChannel         = make(chan error)
 		startChannel       = make(chan *tgbotapi.Message)
 		langChannel        = make(chan *tgbotapi.Message)
-		stopChannel        = make(chan *tgbotapi.Message)
+		clearChannel        = make(chan *tgbotapi.Message)
 		langForwardChannel = make(chan *tgbotapi.Message)
 		catlangChannel     = make(chan *tgbotapi.Message)
 		addLangChannel     = make(chan *tgbotapi.Message)
@@ -33,7 +33,7 @@ func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db
 
 	go startHandler(startChannel, bot, db, errChannel)
 	go langHandler(langChannel, bot, db, errChannel)
-	go stopHandler(stopChannel, bot, db, errChannel)
+	go clearHandler(clearChannel, bot, db, errChannel)
 	go langForwardHandler(langForwardChannel, bot, db, errChannel)
 	go catlangHandler(catlangChannel, bot, db, errChannel)
 	go addLanguageHandler(addLangChannel, bot, db, errChannel)
@@ -60,7 +60,7 @@ func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db
 				startChannel <- msg
 			case "lang":
 				langChannel <- msg
-			case "stop":
+			case "clear":
 				stopChannel <- msg
 			case "catlang":
 				catlangChannel <- msg
@@ -127,7 +127,7 @@ func langHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.
 	}
 }
 
-func stopHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.DB, errChan chan error) {
+func clearHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.DB, errChan chan error) {
 	for {
 		message := <-msgChan
 		err := dbHelper.RemoveUser(db, message.From.ID)
@@ -135,7 +135,7 @@ func stopHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.
 			errChan <- err
 			continue
 		}
-		msg := tgbotapi.NewMessage(int64(message.From.ID), "Пока")
+		msg := tgbotapi.NewMessage(int64(message.From.ID), "Информация о вас была очищена.")
 		_, err = bot.Send(msg)
 		errChan <- err
 	}
