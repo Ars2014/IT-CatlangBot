@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	
+
 	"github.com/Ars2014/IT-CatlangBot/dbHelper"
 	"github.com/Ars2014/IT-CatlangBot/models"
 	"github.com/Syfaro/telegram-bot-api"
@@ -14,6 +14,10 @@ import (
 )
 
 const InlineKeyboardSize = 3
+
+var (
+	admin = os.Getenv("admin")
+)
 
 func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db *bolt.DB) error {
 	var (
@@ -29,7 +33,7 @@ func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db
 		allStatChannel     = make(chan *tgbotapi.Message)
 		clbChannel         = make(chan *tgbotapi.CallbackQuery)
 	)
-	
+
 	go startHandler(startChannel, bot, db, errChannel)
 	go langHandler(langChannel, bot, db, errChannel)
 	go stopHandler(stopChannel, bot, db, errChannel)
@@ -40,7 +44,7 @@ func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db
 	go statHandler(statChannel, bot, db, errChannel)
 	go allStatHandler(allStatChannel, bot, db, errChannel)
 	go inlineKeyboardHandler(clbChannel, bot, db, errChannel)
-	
+
 	for {
 		select {
 		case update := <-updateChannel:
@@ -51,9 +55,9 @@ func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db
 			if update.Message == nil {
 				continue
 			}
-			
+
 			msg := update.Message
-			
+
 			switch msg.Command() {
 			case "start":
 				startChannel <- msg
@@ -72,29 +76,24 @@ func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db
 			case "rmlang":
 				rmLangChannel <- msg
 			}
-			
+
 			if msg.ForwardFrom != nil && msg.Chat.Type == "private" {
 				langForwardChannel <- msg
 			}
-		
+
 		case err := <-errChannel:
 			if err != nil {
 				return err
 			}
 		}
 	}
-	
+
 	return nil
 }
 
 func startHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.DB, errChan chan error) {
 	for {
 		msg := <-msgChan
-		err := dbHelper.AddUserIfNotExists(db, msg.From.ID)
-		if err != nil {
-			errChan <- err
-			continue
-		}
 		if msg.Chat.Type == "private" {
 			errChan <- askLanguage(msg, bot, db, false)
 		}
@@ -104,27 +103,27 @@ func startHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt
 func langHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.DB, errChan chan error) {
 	for {
 		message := <-msgChan
-		
+
 		var user *tgbotapi.User
 		if message.ReplyToMessage != nil {
 			user = message.ReplyToMessage.From
 		} else {
 			user = message.From
 		}
-		
+
 		userInfo, err := dbHelper.GetUser(db, user.ID)
 		if err != nil {
 			errChan <- err
 			continue
 		}
-		
+
 		var text string
 		if userInfo != nil && len(userInfo.Languages) > 0 {
 			text = fmt.Sprintf("Пользователь %s пишет на: %s", getUsernameOrName(user), createLanguagesList(userInfo))
 		} else {
 			text = fmt.Sprintf("Пользователь %s не указал на каких ЯП пишет.", getUsernameOrName(user))
 		}
-		
+
 		msg := tgbotapi.NewMessage(message.Chat.ID, text)
 		msg.ReplyToMessageID = message.MessageID
 		bot.Send(msg)
@@ -149,20 +148,20 @@ func langForwardHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db
 	for {
 		message := <-msgChan
 		user := message.ForwardFrom
-		
+
 		userInfo, err := dbHelper.GetUser(db, user.ID)
 		if err != nil {
 			errChan <- err
 			continue
 		}
-		
+
 		var text string
 		if userInfo != nil && len(userInfo.Languages) > 0 {
 			text = fmt.Sprintf("Пользователь %s пишет на: %s", getUsernameOrName(user), createLanguagesList(userInfo))
 		} else {
 			text = fmt.Sprintf("Пользователь %s не указал на каких ЯП пишет.", getUsernameOrName(user))
 		}
-		
+
 		msg := tgbotapi.NewMessage(message.Chat.ID, text)
 		msg.ReplyToMessageID = message.MessageID
 		bot.Send(msg)
@@ -172,7 +171,6 @@ func langForwardHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db
 func catlangHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.DB, errChan chan error) {
 	for {
 		message := <-msgChan
-		dbHelper.AddUserIfNotExists(db, message.From.ID)
 		errChan <- askLanguage(message, bot, db, false)
 	}
 }
@@ -180,29 +178,29 @@ func catlangHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bo
 func addLanguageHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.DB, errChan chan error) {
 	for {
 		message := <-msgChan
-		
-		if strconv.Itoa(message.From.ID) != os.Getenv("admin") {
+
+		if strconv.Itoa(message.From.ID) != admin {
 			msg := tgbotapi.NewMessage(message.Chat.ID, "Только админ может запускать данную команду.")
 			msg.ReplyToMessageID = message.MessageID
 			bot.Send(msg)
 		}
-		
+
 		args := strings.TrimSpace(message.CommandArguments())
-		
+
 		if args == "" {
 			msg := tgbotapi.NewMessage(message.Chat.ID, "Укажи название языка программирования как аргумент команды.")
 			msg.ReplyToMessageID = message.MessageID
 			bot.Send(msg)
 			continue
 		}
-		
+
 		log.Printf("[Handler] Adding new language '%s'.", args)
 		err := dbHelper.AddLanguage(db, models.Language{Name: args})
 		if err != nil {
 			errChan <- err
 			continue
 		}
-		
+
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Новый язык программирования был добавлен.")
 		msg.ReplyToMessageID = message.MessageID
 		bot.Send(msg)
@@ -213,52 +211,59 @@ func removeLanguageHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI,
 	for {
 		message := <-msgChan
 		args := strings.TrimSpace(message.CommandArguments())
-		
-		if strconv.Itoa(message.From.ID) != os.Getenv("admin") {
+
+		if strconv.Itoa(message.From.ID) != admin {
 			msg := tgbotapi.NewMessage(message.Chat.ID, "Только админ может запускать данную команду.")
 			msg.ReplyToMessageID = message.MessageID
 			bot.Send(msg)
 		}
-		
+
 		founded, err := dbHelper.RemoveLanguage(db, models.Language{Name: args})
 		if err != nil {
 			errChan <- err
 		}
-		
+
 		if !founded {
 			msg := tgbotapi.NewMessage(message.Chat.ID, "Данный язык программирования не был найден.")
 			msg.ReplyToMessageID = message.MessageID
 			bot.Send(msg)
 			continue
 		}
-		
+
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Язык программирования был удалён.")
 		msg.ReplyToMessageID = message.MessageID
 		bot.Send(msg)
 	}
-	
+
 }
 
 func statHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.DB, errChan chan error) {
 	for {
 		message := <-msgChan
-		
+
 		var users []models.User
 		stat := make(map[string]int)
-		
+
 		usersInfo, err := dbHelper.GetUsers(db)
 		if err != nil {
 			errChan <- err
 			continue
 		}
-		
+
+		if len(usersInfo) == 0 {
+			msg := tgbotapi.NewMessage(message.Chat.ID, "Ещё никто не ответил на вопрос.")
+			msg.ReplyToMessageID = message.MessageID
+			bot.Send(msg)
+			continue
+		}
+
 		for _, user := range usersInfo {
 			users = append(users, user)
 			for _, lang := range user.Languages {
 				stat[lang.Name] = stat[lang.Name] + 1
 			}
 		}
-		
+
 		var maxKey string
 		var maxValue int
 		for key, value := range stat {
@@ -267,13 +272,13 @@ func statHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.
 				maxKey = key
 			}
 		}
-		
+
 		text := "Статистика:\n" +
 			fmt.Sprintf("Всего %d %s на вопрос. ", len(users), getNumEnding(len(users),
 				"пользователь ответил", "пользователя ответило", "пользователей ответили")) +
 			fmt.Sprintf("Среди них самым популярным языком программирования является %s (%d %s). ",
 				maxKey, maxValue, getNumEnding(maxValue, "голос", "голоса", "голосов"))
-		
+
 		msg := tgbotapi.NewMessage(message.Chat.ID, text)
 		msg.ReplyToMessageID = message.MessageID
 		bot.Send(msg)
@@ -289,18 +294,18 @@ func allStatHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bo
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Сбор информации о пользователях...\n"+
 			"Это займёт некоторое время...")
 		statMsg, _ := bot.Send(msg)
-		
+
 		users, err := dbHelper.GetUsers(db)
 		if err != nil {
 			errChan <- err
 			continue
 		}
-		
+
 		text := "Статистика всех пользователей:\n"
 		for index, user := range users {
 			index += 1
 			languages := createLanguagesList(&user)
-			
+
 			userInfo, err := bot.GetChat(message.Chat.ChatConfig())
 			if err != nil {
 				text += fmt.Sprintf("%d) UID:%d - %s.", index, user.ID, languages)
@@ -308,7 +313,7 @@ func allStatHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bo
 				text += fmt.Sprintf("%d) %s - %s.", index, getUsernameOrNameFromChat(&userInfo), languages)
 			}
 		}
-		
+
 		editMsg := tgbotapi.NewEditMessageText(message.Chat.ID, statMsg.MessageID, text)
 		bot.Send(editMsg)
 	}
@@ -317,20 +322,26 @@ func allStatHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bo
 func inlineKeyboardHandler(clbChan chan *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, db *bolt.DB, errChan chan error) {
 	for {
 		callbackQuery := <-clbChan
-		
+
+		err := dbHelper.AddUserIfNotExists(db, callbackQuery.From.ID)
+		if err != nil {
+			errChan <- err
+			continue
+		}
+
 		userInfo, err := dbHelper.GetUser(db, callbackQuery.From.ID)
 		if err != nil {
 			errChan <- err
 			continue
 		}
-		
+
 		removePos := -1
 		for index, lang := range userInfo.Languages {
 			if callbackQuery.Data == lang.Name {
 				removePos = index
 			}
 		}
-		
+
 		if removePos == -1 {
 			userInfo.Languages = append(userInfo.Languages, models.Language{Name: callbackQuery.Data})
 			err = dbHelper.AddOrUpdateUser(db, *userInfo)
@@ -338,7 +349,7 @@ func inlineKeyboardHandler(clbChan chan *tgbotapi.CallbackQuery, bot *tgbotapi.B
 				errChan <- err
 				continue
 			}
-			
+
 			callbackQueryAnswer := tgbotapi.NewCallback(callbackQuery.ID, fmt.Sprintf("Выбрано: %s", callbackQuery.Data))
 			bot.AnswerCallbackQuery(callbackQueryAnswer)
 		} else {

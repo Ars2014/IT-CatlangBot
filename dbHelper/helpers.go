@@ -7,4 +7,3 @@ func ItoB(value int) []byte {
 	binary.BigEndian.PutUint64(b, uint64(value))
 	return b
 }
-

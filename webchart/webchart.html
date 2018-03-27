@@ -1,0 +1,41 @@
+{{define "Chart"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>It-CatLang Statistic</title>
+
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        google.charts.load('current', {'packages': ['corechart']});
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart() {
+            var data = google.visualization.arrayToDataTable({{.}});
+
+            var w = window,
+                    d = document,
+                    e = d.documentElement,
+                    g = d.getElementsByTagName('body')[0],
+                    x = w.innerHeight || e.clientHeight || g.clientHeight,
+                    y = w.innerWidth || e.clientWidth || g.clientWidth;
+
+            var options = {
+                'title': 'Статистика языков, собранная ботом',
+                'width': x - 0.12 * x,
+                'height': y - 0.12 * y,
+                'bar': {'groupWidth': '100%%'},
+                'legend': {'position': 'none'}
+            };
+
+            var chart = new google.visualization.ColumnChart(document.getElementById('chart'))
+            chart.draw(data, options)
+
+        }
+    </script>
+</head>
+<body>
+<div id="chart"></div>
+</body>
+</html>
+{{end}}

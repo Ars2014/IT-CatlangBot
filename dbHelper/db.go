@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
-	
+
 	"github.com/Ars2014/IT-CatlangBot/models"
 	"github.com/boltdb/bolt"
 )
@@ -21,35 +21,35 @@ func SetupDB() (*bolt.DB, error) {
 	if dbFilename == "" {
 		return nil, errors.New("no 'db' were specified in .env file")
 	}
-	
+
 	db, err := bolt.Open(dbFilename, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	err = db.Update(func(tx *bolt.Tx) error {
 		root, err := tx.CreateBucketIfNotExists(RootBucket)
 		if err != nil {
 			return err
 		}
-		
+
 		_, err = root.CreateBucketIfNotExists(LanguagesBucket)
 		if err != nil {
 			return err
 		}
-		
+
 		_, err = root.CreateBucketIfNotExists(UsersBucket)
 		if err != nil {
 			return err
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	log.Println("[DB] Setup done.")
 	return db, nil
 }
@@ -58,53 +58,53 @@ func AddLanguage(db *bolt.DB, language models.Language) error {
 	var id uint64
 	err := db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(RootBucket).Bucket(LanguagesBucket)
-		
+
 		id, _ = b.NextSequence()
-		
+
 		buf, err := json.Marshal(language)
 		if err != nil {
 			return err
 		}
-		
+
 		return b.Put(ItoB(int(id)), buf)
 	})
-	
+
 	if err == nil {
 		log.Println("[DB] New language was successfully added.")
 	}
-	
+
 	return err
 }
 
 func GetLanguages(db *bolt.DB) ([]models.Language, error) {
 	var languages []models.Language
-	
+
 	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(RootBucket).Bucket(LanguagesBucket)
-		
+
 		return b.ForEach(func(key, value []byte) error {
 			var language models.Language
-			
+
 			err := json.Unmarshal(value, &language)
 			if err != nil {
 				return err
 			}
-			
+
 			languages = append(languages, language)
 			return nil
 		})
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return languages, nil
 }
 
 func RemoveLanguage(db *bolt.DB, language models.Language) (bool, error) {
 	var founded bool
-	
+
 	err := db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(RootBucket).Bucket(UsersBucket)
 		return b.ForEach(func(key, value []byte) error {
@@ -113,7 +113,7 @@ func RemoveLanguage(db *bolt.DB, language models.Language) (bool, error) {
 			if err != nil {
 				return err
 			}
-			
+
 			langIndex := -1
 			for index, lang := range user.Languages {
 				if lang.Name == language.Name {
@@ -121,23 +121,23 @@ func RemoveLanguage(db *bolt.DB, language models.Language) (bool, error) {
 					break
 				}
 			}
-			
+
 			if langIndex >= 0 {
 				user.Languages = append(user.Languages[:langIndex], user.Languages[langIndex+1:]...)
 			}
-			
+
 			buf, err := json.Marshal(user)
 			if err != nil {
 				return err
 			}
-			
+
 			return b.Put(ItoB(user.ID), buf)
 		})
 	})
 	if err != nil {
 		return founded, err
 	}
-	
+
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(RootBucket).Bucket(LanguagesBucket)
 		var id []byte
@@ -158,11 +158,11 @@ func RemoveLanguage(db *bolt.DB, language models.Language) (bool, error) {
 		}
 		return nil
 	})
-	
+
 	if err == nil && founded {
 		log.Println("[DB] Language was successfully removed.")
 	}
-	
+
 	return founded, err
 }
 
@@ -175,17 +175,17 @@ func AddOrUpdateUser(db *bolt.DB, user models.User) error {
 		}
 		return b.Put(ItoB(user.ID), buf)
 	})
-	
+
 	if err == nil {
 		log.Println("[DB] User was successfully added/updated.")
 	}
-	
+
 	return err
 }
 
 func GetUser(db *bolt.DB, id int) (*models.User, error) {
 	var user *models.User
-	
+
 	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(RootBucket).Bucket(UsersBucket)
 		value := b.Get(ItoB(id))
@@ -195,11 +195,11 @@ func GetUser(db *bolt.DB, id int) (*models.User, error) {
 		}
 		return json.Unmarshal(value, &user)
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return user, nil
 }
 
@@ -224,7 +224,7 @@ func AddUserIfNotExists(db *bolt.DB, id int) error {
 
 func GetUsers(db *bolt.DB) ([]models.User, error) {
 	var users []models.User
-	
+
 	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(RootBucket).Bucket(UsersBucket)
 		return b.ForEach(func(key, value []byte) error {
@@ -237,11 +237,11 @@ func GetUsers(db *bolt.DB) ([]models.User, error) {
 			return nil
 		})
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return users, nil
 }
 
@@ -250,10 +250,10 @@ func RemoveUser(db *bolt.DB, id int) error {
 		b := tx.Bucket(RootBucket).Bucket(UsersBucket)
 		return b.Delete(ItoB(id))
 	})
-	
+
 	if err == nil {
 		log.Println("[DB] User was successfully removed.")
 	}
-	
+
 	return err
 }
