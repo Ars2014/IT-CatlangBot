@@ -61,7 +61,7 @@ func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db
 			case "lang":
 				langChannel <- msg
 			case "clear":
-				stopChannel <- msg
+				clearChannel <- msg
 			case "catlang":
 				catlangChannel <- msg
 			case "stat":
