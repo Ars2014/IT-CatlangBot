@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"os"
 	"path"
+	"sort"
 
 	"github.com/Ars2014/IT-CatlangBot/dbHelper"
 	"github.com/Ars2014/IT-CatlangBot/models"
@@ -40,8 +41,16 @@ func ChartPage(db *bolt.DB) (string, error) {
 
 	data := [][]interface{}{{"Язык программирования", "Количество людей", map[string]string{"role": "style"}, map[string]string{"role": "annotation"}}}
 
+	var keys []string
+	for k := range stat {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
 	usersCount := len(users)
-	for key, value := range stat {
+	for _, key := range keys {
+		value := stat[key]
 		percent := (value / usersCount) * 100
 		data = append(data, []interface{}{key, value, ColorFromString(key), fmt.Sprintf("%d%%", percent)})
 	}

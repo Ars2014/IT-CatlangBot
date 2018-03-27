@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -14,10 +15,6 @@ import (
 )
 
 const InlineKeyboardSize = 3
-
-var (
-	admin = os.Getenv("admin")
-)
 
 func MainHandler(updateChannel tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, db *bolt.DB) error {
 	var (
@@ -179,10 +176,11 @@ func addLanguageHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db
 	for {
 		message := <-msgChan
 
-		if strconv.Itoa(message.From.ID) != admin {
+		if strconv.Itoa(message.From.ID) != os.Getenv("admin") {
 			msg := tgbotapi.NewMessage(message.Chat.ID, "Только админ может запускать данную команду.")
 			msg.ReplyToMessageID = message.MessageID
 			bot.Send(msg)
+			continue
 		}
 
 		args := strings.TrimSpace(message.CommandArguments())
@@ -194,16 +192,35 @@ func addLanguageHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db
 			continue
 		}
 
-		log.Printf("[Handler] Adding new language '%s'.", args)
-		err := dbHelper.AddLanguage(db, models.Language{Name: args})
+		languages, err := dbHelper.GetLanguages(db)
 		if err != nil {
 			errChan <- err
 			continue
 		}
 
-		msg := tgbotapi.NewMessage(message.Chat.ID, "Новый язык программирования был добавлен.")
-		msg.ReplyToMessageID = message.MessageID
-		bot.Send(msg)
+		pos := -1
+		for index, language := range languages {
+			if language.Name == args {
+				pos = index
+			}
+		}
+
+		if pos == -1 {
+			log.Printf("[Handler] Adding new language '%s'.", args)
+			err = dbHelper.AddLanguage(db, models.Language{Name: args})
+			if err != nil {
+				errChan <- err
+				continue
+			}
+
+			msg := tgbotapi.NewMessage(message.Chat.ID, "Новый язык программирования был добавлен.")
+			msg.ReplyToMessageID = message.MessageID
+			bot.Send(msg)
+		} else {
+			msg := tgbotapi.NewMessage(message.Chat.ID, "Данный язык программирования уже существует.")
+			msg.ReplyToMessageID = message.MessageID
+			bot.Send(msg)
+		}
 	}
 }
 
@@ -212,10 +229,11 @@ func removeLanguageHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI,
 		message := <-msgChan
 		args := strings.TrimSpace(message.CommandArguments())
 
-		if strconv.Itoa(message.From.ID) != admin {
+		if strconv.Itoa(message.From.ID) != os.Getenv("admin") {
 			msg := tgbotapi.NewMessage(message.Chat.ID, "Только админ может запускать данную команду.")
 			msg.ReplyToMessageID = message.MessageID
 			bot.Send(msg)
+			continue
 		}
 
 		founded, err := dbHelper.RemoveLanguage(db, models.Language{Name: args})
@@ -264,9 +282,17 @@ func statHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.
 			}
 		}
 
+		var keys []string
+		for k := range stat {
+			keys = append(keys, k)
+		}
+
+		sort.Strings(keys)
+
 		var maxKey string
 		var maxValue int
-		for key, value := range stat {
+		for _, key := range keys {
+			value := stat[key]
 			if value > maxValue {
 				maxValue = value
 				maxKey = key
