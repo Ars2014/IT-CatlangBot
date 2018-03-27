@@ -45,7 +45,8 @@ func askLanguage(message *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.DB, h
 	}
 	markup := tgbotapi.NewInlineKeyboardMarkup(buttons...)
 
-	msg := tgbotapi.NewMessage(int64(message.From.ID), "На каком языке прогроаммирования пишешь?")
+	msg := tgbotapi.NewMessage(int64(message.From.ID), "На каком языке прогроаммирования пишешь?\n"+
+		"Если вашего ЯП нет в списке, обратитесь к @Ars2013.")
 	msg.ReplyMarkup = markup
 
 	_, err = bot.Send(msg)

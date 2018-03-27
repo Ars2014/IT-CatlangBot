@@ -278,7 +278,7 @@ func statHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.
 				"пользователь ответил", "пользователя ответило", "пользователей ответили")) +
 			fmt.Sprintf("Среди них самым популярным языком программирования является %s (%d %s).\n",
 				maxKey, maxValue, getNumEnding(maxValue, "голос", "голоса", "голосов")) +
-					"Статистика: " + os.Getenv("base_url") + os.Getenv("chart_url")
+			"Статистика: " + os.Getenv("base_url") + os.Getenv("chart_url")
 
 		msg := tgbotapi.NewMessage(message.Chat.ID, text)
 		msg.ReplyToMessageID = message.MessageID
