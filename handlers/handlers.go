@@ -276,8 +276,9 @@ func statHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bolt.
 		text := "Статистика:\n" +
 			fmt.Sprintf("Всего %d %s на вопрос. ", len(users), getNumEnding(len(users),
 				"пользователь ответил", "пользователя ответило", "пользователей ответили")) +
-			fmt.Sprintf("Среди них самым популярным языком программирования является %s (%d %s). ",
-				maxKey, maxValue, getNumEnding(maxValue, "голос", "голоса", "голосов"))
+			fmt.Sprintf("Среди них самым популярным языком программирования является %s (%d %s).\n",
+				maxKey, maxValue, getNumEnding(maxValue, "голос", "голоса", "голосов")) +
+					"Статистика: " + os.Getenv("base_url") + os.Getenv("chart_url")
 
 		msg := tgbotapi.NewMessage(message.Chat.ID, text)
 		msg.ReplyToMessageID = message.MessageID

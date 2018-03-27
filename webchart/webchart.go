@@ -3,11 +3,10 @@ package webchart
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
+	"os"
 	"path"
-	"runtime"
 
 	"github.com/Ars2014/IT-CatlangBot/dbHelper"
 	"github.com/Ars2014/IT-CatlangBot/models"
@@ -15,13 +14,11 @@ import (
 )
 
 func ChartPage(db *bolt.DB) (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", errors.New("could not find module file location")
+	currPath, err := os.Getwd()
+	if err != nil {
+		return "", nil
 	}
-	filename := path.Join(path.Dir(file), "webchart.html")
-
-	pageTemplate, err := template.ParseFiles(filename)
+	pageTemplate, err := template.ParseFiles(path.Join(currPath, "webchart.html"))
 	if err != nil {
 		return "", err
 	}
