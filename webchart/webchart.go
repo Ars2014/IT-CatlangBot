@@ -16,7 +16,7 @@ import (
 func ChartPage(db *bolt.DB) (string, error) {
 	currPath, err := os.Getwd()
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	pageTemplate, err := template.ParseFiles(path.Join(currPath, "webchart.html"))
 	if err != nil {
