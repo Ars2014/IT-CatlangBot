@@ -67,3 +67,5 @@ fabric.properties
 test.db
 test.db.lock
 dist
+it-catlang.db
+it-catlang.db.lock

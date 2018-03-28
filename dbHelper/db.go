@@ -122,7 +122,7 @@ func RemoveLanguage(db *bolt.DB, language models.Language) (bool, error) {
 				}
 			}
 
-			if langIndex >= 0 {
+			if langIndex != -1 {
 				user.Languages = append(user.Languages[:langIndex], user.Languages[langIndex+1:]...)
 			}
 

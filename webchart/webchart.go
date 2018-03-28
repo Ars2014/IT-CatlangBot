@@ -51,7 +51,7 @@ func ChartPage(db *bolt.DB) (string, error) {
 	usersCount := len(users)
 	for _, key := range keys {
 		value := stat[key]
-		percent := (value / usersCount) * 100
+		percent := int((float64(value) / float64(usersCount)) * 100)
 		data = append(data, []interface{}{key, value, ColorFromString(key), fmt.Sprintf("%d%%", percent)})
 	}
 
