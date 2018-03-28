@@ -333,11 +333,11 @@ func allStatHandler(msgChan chan *tgbotapi.Message, bot *tgbotapi.BotAPI, db *bo
 			index += 1
 			languages := createLanguagesList(&user)
 
-			userInfo, err := bot.GetChat(message.Chat.ChatConfig())
+			userInfo, err := bot.GetChat(tgbotapi.ChatConfig{ChatID:int64(user.ID)})
 			if err != nil {
-				text += fmt.Sprintf("%d) UID:%d - %s.", index, user.ID, languages)
+				text += fmt.Sprintf("%d) UID:%d - %s.\n", index, user.ID, languages)
 			} else {
-				text += fmt.Sprintf("%d) %s - %s.", index, getUsernameOrNameFromChat(&userInfo), languages)
+				text += fmt.Sprintf("%d) %s - %s.\n", index, getUsernameOrNameFromChat(&userInfo), languages)
 			}
 		}
 
